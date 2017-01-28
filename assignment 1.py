@@ -28,6 +28,9 @@ class node(object):
         self.state = state
         
     def findZeroInState(self):
+        '''
+        returns the location of 0 of the state
+        '''
         
         for out_i, in_lst in enumerate(self.state):
             for in_i, in_val in enumerate(in_lst):
@@ -35,6 +38,9 @@ class node(object):
                     return out_i, in_i
                     
     def successorMoves(self):
+        '''
+        returns the possible moves for a given state
+        '''
     
         movesDict = {
             # (row, col)
@@ -56,6 +62,10 @@ class node(object):
         return movesDict[iblank]
     
     def createNewNode(self, move, returnValueMoved = False):
+        '''
+        returns a new node based on a move (input parameter). If returnValueMoved
+        is set to True, the value that swapped places with 0 is returned as well.
+        '''
         
         # creating a copy of the original node
         newNodeAsLst = copy.deepcopy(self.state)
@@ -80,6 +90,11 @@ class node(object):
             
     
     def h1Cost(self, goal=goalState):
+        '''
+        returns the cost associated with a given state, which is the sum of the
+        total number of mismatched entries. By default the current state is 
+        compared to the goal state.
+        '''
         
         goal = np.array(goal)
         node = np.array(self.state)
@@ -90,6 +105,12 @@ class node(object):
         return sum(sum(torfMat))
         
     def h2Cost(self, goal=goalState):
+        '''
+        returns the cost associated with a given state as the sum of the
+        manhattan distances of mismatched entries of the state compared to their 
+        positions in the goal state
+        '''
+        
         
         goal = np.array(goal)
         node = np.array(self.state)
@@ -113,6 +134,11 @@ class node(object):
         return manhattanDist
 
     def h3Cost(self, goal=goalState):
+        '''
+        returns the cost associated with a given state as the sum of the
+        euclidean distances of mismatched entries of the state compared to their 
+        positions in the goal state
+        '''
         
         goal = np.array(goal)
         node = np.array(self.state)
@@ -137,6 +163,9 @@ class node(object):
         
         
     def isGoal(self, goal=goalState):
+        '''
+        returns True if state is same as goal state else False
+        '''
         return self.state == goal
 
 ###############################################################################
@@ -148,7 +177,9 @@ class path:
 
     @staticmethod
     def findZeroInState(state):
-    
+        '''
+        returns the location of 0 in a state        
+        '''
         for out_i, in_lst in enumerate(state):
             for in_i, in_val in enumerate(in_lst):
                 if in_val == 0: 
@@ -158,31 +189,38 @@ class path:
     @staticmethod
     def generate(goalNode):
         '''
-        returns path, path len, path cost by iteratively calling parent nodes 
-        starting with the goal node. 
+        returns path, path len, cost of each state, final path cost by iteratively 
+        calling parent nodes starting with the goal node. 
         goalNode: The node that corresponds to the final goal state found via search
         '''
         
         path_ = []
+        costLst = []
            
         targetNode = goalNode
         
         while targetNode != 'Root':
             
             path_.append(targetNode.state)
+            costLst.append(targetNode.totalCost)
             
             targetNode = targetNode.parent
             
         
         path_.reverse() # root first and goal last
+        costLst.reverse()        
         
-        pathLen, pathCost = len(path_), goalNode.totalCost
+        pathLen, finalPathCost = len(path_), goalNode.totalCost
         
-        return path_, pathLen, pathCost
+        return path_, pathLen, finalPathCost, costLst
     
     
     @staticmethod    
     def moveDirection(parentState, childState):
+        '''
+        returns the move direction of 0 based on the change from original state
+        (parent state) and new state (child state)
+        '''
         
         parent_i, parent_j = path.findZeroInState(parentState)
         child_i, child_j = path.findZeroInState(childState)
@@ -199,6 +237,14 @@ class path:
         
     @staticmethod
     def printState(state):
+        '''
+        returns a printable format of a state.
+        Example: 
+        print printState([[1,2,3],[8,0,4],[7,6,5]])
+        >>> [1 2 3
+             8 0 4
+             7 6 5]
+        '''
         
         printState = '[' + ','.join(str(x) for x in state[0]) + '\n '\
                     + ','.join(str(x) for x in state[1])\
@@ -208,8 +254,11 @@ class path:
 
     
     @staticmethod
-    def printPath(path_):
-    
+    def printPath(path_, costLst):
+        '''
+        prints entire path: the root to the goal including the move directions
+        and the path cost at that node
+        '''
         printStatement = ''    
         
         for i, state in enumerate(path_):
@@ -223,12 +272,28 @@ class path:
                 continue            
             
             printStatement += 'MOVE BLANK ' + path.moveDirection(state, path_[i+1]) + '\n'
+            printStatement += 'COST: ' + str(costLst[i+1]-costLst[i]) + '\n'
+            printStatement += 'TOTAL COST: ' + str(costLst[i+1]) + '\n'
             
                 
         print printStatement
         
 ###############################################################################
-def search(initState, searchAlgo='breathFirst', maxDepth=-1, h=None):
+def search(initState, searchAlgo='breathFirst', maxDepth=-1, h=None, printPath=True):
+    
+    '''
+    returns and prints the path and various statistics about it used to find the 
+    solution for a given 8-puzzle configuration. 
+    
+    parms:
+    initState: the initial state of the 8-puzzle (nested list)
+    searchAlgo: breathFirst, depthFirst, uniformCost, bestFirstCost, AStarCost
+    maxDepth: set the maximum depth to traverse the search tree
+    h: the heuristic to be used to estimate cost 'h1', 'h2', or 'h3'
+        h1: Mismatch, h2: Manhattan, h3: Euclidean
+    printPath: if set to True, prints out the path
+    '''
+
     # searchAlgo: breathFirst, depthFirst, uniformCost, bestFirstCost, AStarCost
     # set h=None for all others but bestFirstCost, AStarCost
     # set h to h1,h2, or h3 for AStar. 1: Mismatch, 2: Manhattan, 3: Euclidean
@@ -246,7 +311,7 @@ def search(initState, searchAlgo='breathFirst', maxDepth=-1, h=None):
     initNode.totalCost = initNode.g_n + initNode.h_n
     
     maxMem = 0 # to store memory usage
-    nodeTraverseCount = 0 # to store number of nodes poped
+    nodeTraverseCount = 0 # to store number of nodes popped
 
     nodeQ = [initNode] # list to hold the nodes in queue
     visited = [] # list of previously traversed states
@@ -268,14 +333,14 @@ def search(initState, searchAlgo='breathFirst', maxDepth=-1, h=None):
                 currNode = nodeQ.pop() # pop out last node of Queue (LIFO)
             if 'Cost' in searchAlgo:
                 lowestCostIdx = costQ.index(min(costQ))
-                lowestCost = costQ.pop(lowestCostIdx) # get index of lowest cost node             
+                costQ.pop(lowestCostIdx) # get index of lowest cost node             
                 currNode = nodeQ.pop(lowestCostIdx) # pop out min cost node
                 
         except: # if all nodes in queue are traversed (applies to iterative deepening)
             break
         
         if currNode.isGoal(): 
-            print 'Solution Found!\n\n'
+            print 'Solution Found!\n Here is the path:\n'
             goalNode = currNode
             # search ends for all but uniform cost - there may still be a cheaper path
             if searchAlgo != 'uniformCost': break
@@ -321,35 +386,35 @@ def search(initState, searchAlgo='breathFirst', maxDepth=-1, h=None):
     # if search ends prior to reaching goal (applies only to iterative deepening)
     if searchAlgo != 'uniformCost':
         if currNode.isGoal():
-            path_, pathLen, pathCost = path.generate(goalNode) 
-            path.printPath(path_)
+            path_, pathLen, finalPathCost, pathCostLst = path.generate(goalNode) 
+            if printPath: path.printPath(path_,pathCostLst)
             
     else: # to select cheapest goal node for uniform cost search
         minGoalCostIdx = goalNodesCost.index(min(goalNodesCost))
         goalNode = goalNodes.pop(minGoalCostIdx) # pop out min cost node
-        path_, pathLen, pathCost = path.generate(goalNode) 
-        path.printPath(path_)
+        path_, pathLen, finalPathCost, pathCostLst = path.generate(goalNode) 
+        if printPath: path.printPath(path_,pathCostLst)
         
     endTime = time.time()        
                 
     timeTaken = endTime - startTime
     
     if currNode.isGoal():
-        return path_, timeTaken, maxMem, nodeTraverseCount, pathLen, pathCost, goalNode.depth
+        return path_, timeTaken, maxMem, nodeTraverseCount, pathLen, \
+        finalPathCost, goalNode.depth
     else: # applied only to iterative deepening
-        return None, timeTaken, maxMem, nodeTraverseCount, None, None, currNode.depth
-       
-        
-search(hard,'AStarCost',h='h3')      
-search(hard,'bestFirstCost',h='h3')
-
-search(medium,'uniformCost')    
+        return None, timeTaken, maxMem, nodeTraverseCount, None, None,\
+        currNode.depth
         
 
-
-###############################################################################
-def ids(initialNode):   
-    # iterative deepening depth first search
+def ids(initialNode): 
+    '''
+    returns the solution path and stats related to path using iterative deepening
+    search. 
+        
+    parms:
+    initState: the initial state of the 8-puzzle (nested list)
+    '''    
     
     totalNodeTraverseCount = 0 # total number of nodes expanded
     totalTime = 0 # time taken to complete traversal   
@@ -363,7 +428,7 @@ def ids(initialNode):
         print 'Searching Depth of ' + str(depth+1)
         
         path_, timeTaken, maxMem_i, nodeTraverseCount, pathLen, pathCost, \
-        maxDepth  = search(initialNode, searchAlgo='depthFirst', maxDepth=depth)
+        maxDepth = search(initialNode, searchAlgo='depthFirst', maxDepth=depth)
 
         totalNodeTraverseCount += nodeTraverseCount        
         maxMem = max(maxMem, maxMem_i)        
@@ -373,16 +438,44 @@ def ids(initialNode):
             
         depth += 1
         
-    return path_, totalTime, maxMem, totalNodeTraverseCount, pathLen, pathCost, maxDepth
-
-
-ids(hard)
+    return path_, totalTime, maxMem, totalNodeTraverseCount, pathLen, pathCost,\
+    maxDepth
 
 ##############################################################################
 
+# test runs
 
+# easy
+search(easy,'breathFirst')
+search(easy, 'depthFirst')
+ids(easy)
+search(easy, 'uniformCost')
+search(easy, 'bestFirstCost', h='h1')
+search(easy, 'AstarCost', h='h1')
+search(easy, 'AstarCost', h='h2')
+search(easy, 'AstarCost', h='h3')
 
+# medium
+search(medium,'breathFirst')
+search(medium, 'depthFirst')
+ids(medium)
+search(medium, 'uniformCost')
+search(medium, 'bestFirstCost', h='h1')
+search(medium, 'AstarCost', h='h1')
+search(medium, 'AstarCost', h='h2')
+search(medium, 'AstarCost', h='h3')
 
+# hard
+search(hard,'breathFirst')
+search(hard, 'depthFirst')
+ids(hard)
+search(hard, 'uniformCost')
+search(hard, 'bestFirstCost', h='h1')
+search(hard, 'AstarCost', h='h1')
+search(hard, 'AstarCost', h='h2')
+search(hard, 'AstarCost', h='h3')
+
+##############################################################################
 
 
 
